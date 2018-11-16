@@ -644,10 +644,7 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 			await this.kojacKeySet(key, dbPerson);
 		}
 		var person_updates = {};
-		let person_keys = 'first_name last_name company_name phone participant_id roles role_nodes photoURL metrics_name carer_id caree_id instructor_id real'.split(' ');
 		for (let k of Object.keys(person)) {
-			if (!person_keys.includes(k))
-				continue;
 			if (dbPerson[k]!==person[k])
 				person_updates[k] = person[k];
 		}
