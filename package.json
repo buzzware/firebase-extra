@@ -1,11 +1,11 @@
 {
   "name": "firebase-extra",
-  "version": "0.0.1",
-  "main": "dist/firebase-extra.cjs.js",
-  "module": "dist/firebase-extra.esm.js",
+  "version": "0.1.0",
+  "main": "dist/cjs/FirebaseExtra.js",
+  "module": "dist/es/FirebaseExtra.js",
   "dependencies": {
-    "lodash-es": "^4.17.11",
-    "error-control": "github:buzzware/error-control-js"
+    "lodash": "^4.17.11",
+    "error-control": "^0.1.0"
   },
   "devDependencies": {
     "chai": "^4.2.0",

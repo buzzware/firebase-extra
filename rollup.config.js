@@ -4,51 +4,32 @@ import pkg from './package.json';
 
 export default [
 
-	// {
-	// 	input: 'src/main.js',
-	// 	output: {
-	// 		name: 'ErrorControl',
-	// 		file: pkg.browser,
-	// 		format: 'umd'						// browser-friendly UMD build
-	// 	},
-	// 	plugins: [
-	// 		resolve(), // so Rollup can find `ms`
-	// 		commonjs() // so Rollup can convert `ms` to an ES module
-	// 	]
-	// },
-
-	// CommonJS (for Node) and ES module (for bundlers) build.
-	// (We could have three entries in the configuration array
-	// instead of two, but it's quicker to generate multiple
-	// builds from a single configuration where possible, using
-	// an array for the `output` option, where we can specify 
-	// `file` and `format` for each target)
 	{
 		input: 'src/FirebaseExtra.js',
-		//external: [],
+		external: ['error-control'],
 		output: [
 			{ file: pkg.main, format: 'cjs' },
 			{ file: pkg.module, format: 'es' }
 		]
 	},
 	{
-		input: 'src/FirebaseExtraAdmin.js',
-		//external: [],
-		output: [
-			{ file: 'dist/FirebaseExtraAdmin.cjs.js', format: 'cjs' },
-			{ file: 'dist/FirebaseExtraAdmin.esm.js', format: 'es' }
-		]
-	},
-	{
 		input: 'src/FirebaseAdminUtils.js',
-		external: ['lodash'],
+		external: ['lodash','error-control'],
 		output: [
-			{ file: 'dist/FirebaseAdminUtils.cjs.js', format: 'cjs' },
-			{ file: 'dist/FirebaseAdminUtils.esm.js', format: 'es' }
+			{ file: 'dist/cjs/FirebaseAdminUtils.js', format: 'cjs' },
+			{ file: 'dist/es/FirebaseAdminUtils.js', format: 'es' }
 		],
 		plugins: [
 			resolve(), // so Rollup can find `ms`
 			commonjs() // so Rollup can convert `ms` to an ES module
+		]
+	},
+	{
+		input: 'src/FirebaseExtraAdmin.js',
+		external: ['error-control','./FirebaseExtra','./FirebaseAdminUtils'],
+		output: [
+			{ file: 'dist/cjs/FirebaseExtraAdmin.js', format: 'cjs' },
+			{ file: 'dist/es/FirebaseExtraAdmin.js', format: 'es' }
 		]
 	}
 ];

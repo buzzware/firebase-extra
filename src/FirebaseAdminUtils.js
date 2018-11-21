@@ -1,7 +1,5 @@
 import _ from 'lodash';
 
-//const crypto = require('crypto');
-
 var FirebaseAdminUtils = class {
 
 	static encode(v) {
@@ -12,7 +10,7 @@ var FirebaseAdminUtils = class {
 			return { "timestampValue": v }
 
 		if (_.isArray(v)) {
-			var tmp = new Array(v.length); //{"arrayValue": {"values": []}}
+			var tmp = new Array(v.length);
 			for (var i = 0; i < v.length; i++) {
 				tmp[i] = this.encode(v[i]);
 			}
@@ -150,13 +148,6 @@ var FirebaseAdminUtils = class {
 		});
 		return promise;
 	}
-
-	// static fastHash(aString) {
-	// 	const fastHasher = crypto.createHash('sha1');
-	// 	const hashed = fastHasher.update(aString);
-	// 	const digested = hashed.digest('base64');
-	// 	return digested;
-	// }
 
 };
 
