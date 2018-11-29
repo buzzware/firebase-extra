@@ -1,6 +1,6 @@
 {
   "name": "firebase-extra",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "license": "MIT",
   "homepage": "https://github.com/buzzware/firebase-extra",
   "author": {
@@ -15,7 +15,7 @@
   "main": "dist/cjs/FirebaseExtra.js",
   "module": "dist/es/FirebaseExtra.js",
   "dependencies": {
-    "error-control": "^0.1.4",
+    "error-control": "^0.1.7",
     "lodash": "^4.17.11"
   },
   "devDependencies": {
