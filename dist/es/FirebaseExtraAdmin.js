@@ -5,7 +5,7 @@ var isNode = (typeof module !== 'undefined' && typeof module.exports !== 'undefi
 
 var FirebaseExtraAdmin = class extends FirebaseExtra {
 
-	constructor(config, firebaseSdk, adminSdk, serviceCredentials, asUid=null) {
+	constructor(config, firebaseSdk, adminSdk, serviceCredentials) {
 		super(config, firebaseSdk);
 
 // If you are using the Node.js Admin SDK in a Cloud Function, you can automatically initialize the SDK through the functions.config() variable:
@@ -18,8 +18,6 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 			credential: this.adminSdk.credential.cert(serviceCredentials),
 			databaseURL: config.databaseURL
 		};
-		if (asUid)
-			options.databaseAuthVariableOverride = { uid: asUid };
 		this.adminApp = this.adminSdk.initializeApp(options,appname);
 		this.adminApp.firestore().settings({timestampsInSnapshots: true});
 	}
@@ -285,6 +283,31 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 		});
 		return FirebaseExtra.timeout(promise,this.timeoutms);
 	}
+
+	setCustomUserClaims(uid,claims) {
+		let promise = this.adminAuth.setCustomUserClaims(uid,claims);
+		return FirebaseExtra.timeout(promise,30000);
+	}
+
+	// this is for convenience. It will be more efficient to use the user customClaims property directly if you have a user record
+	getCustomUserClaims(uid) {
+		let promise = this.adminAuth.getUser(uid).then(u => u.customClaims);
+		return FirebaseExtra.timeout(promise,30000);
+	}
+
+	verifyIdTokenAndGetClaims(aToken) {
+		let promise = this.adminAuth.verifyIdToken(aToken);
+		return FirebaseExtra.timeout(promise,30000);
+	}
+
+	// create a FirebaseExtra client impersonating the given uid
+	async clientForUser(uid,claims=null) {
+		let customToken = await (claims ? this.createCustomToken(uid,claims) : this.createCustomToken(uid));
+		let client = new FirebaseExtra(this.config,this.firebaseSdk);
+		let userCredential = await client.auth.signInWithCustomToken(customToken);
+		return client;
+	}
+
 };
 
 export default FirebaseExtraAdmin;
