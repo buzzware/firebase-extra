@@ -373,6 +373,9 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 
 };
 
+FirebaseExtraAdmin.timeout = FirebaseExtra.timeout;
+FirebaseExtraAdmin.TimeoutError = FirebaseExtra.TimeoutError;
+
 FirebaseExtraAdmin.Roles = Roles;
 
 export default FirebaseExtraAdmin;
