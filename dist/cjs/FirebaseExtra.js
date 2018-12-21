@@ -42,6 +42,67 @@ var FirebaseExtra = class {
     return this.app.firestore();
   }
 
+  getRef(aCollection,aId,aOptions={}) {
+    var result = this.firestore.collection(aCollection).doc(aId).get(aOptions);
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+  
+  async get(aCollection,aId) {
+    var ref = await this.getRef(aCollection,aId);
+    return ref.exists ? ref.data() : undefined;
+  }
+  
+  async getFresh(aCollection,aId) {
+    var ref = await this.getRef(aCollection,aId,{source: 'server'});
+    return ref.exists ? ref.data() : undefined;
+  }
+  
+  set(aCollection,aId,aValues) {
+    var result = this.firestore.collection(aCollection).doc(aId).set(aValues).then(()=>aValues);
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+  
+  clear(aCollection,aId) {
+    if (!aId)
+      throw new Error('clear all of a resource not supported');
+    var result = this.firestore.collection(aCollection).doc(aId).delete();
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+  
+  // Create a document in the given collection with the given values
+  // * if the values contain an id, it will become the document id. Otherwise an id will be generated and the id property set to it.
+  // * returns a shallow clone of the values, with the id set
+  create(aCollection,aValues) {
+    let id = aValues.id;
+    if (!id)
+      id = this.firestore.collection(aCollection).doc().id;
+    aValues = Object.assign({},aValues,{id});
+    return this.set(aCollection,id,aValues);
+  }
+  
+  modelCreate(aCollection,aValues) {
+    aValues = Object.assign({},aValues,{
+      created_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp(),
+      updated_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp()
+    });
+    return this.create(aCollection,aValues)
+  }
+  
+  // will fail if the document doesn't exist
+  update(aCollection,aId,aUpdates) {
+    if (!Object.keys(aUpdates).length)
+      return Promise.resolve();
+    var result = this.firestore.collection(aCollection).doc(aId).update(aUpdates);
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+  
+  modelUpdate(aCollection,aId,aValues) {
+    aValues = Object.assign({},aValues,{
+      updated_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp()
+    });
+    return this.update(aCollection,aId,aValues);
+  }
+
   kojacKeySet(aKey, aValue) {
     var [r, i] = aKey.split('__');
     var result = this.firestore.collection(r).doc(i).set(aValue);
