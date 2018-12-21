@@ -79,7 +79,19 @@ var FirebaseExtra = class {
     aValues = Object.assign({},aValues,{id});
     return this.set(aCollection,id,aValues);
   }
-  
+
+  // Update a document
+  // will fail if the document doesn't exist
+  // Returns a promise resolving to undefined
+  update(aCollection,aId,aUpdates) {
+    if (!Object.keys(aUpdates).length)
+      return Promise.resolve();
+    var result = this.firestore.collection(aCollection).doc(aId).update(aUpdates);
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+
+  // Use this with the modelFieldsOk security rules function
+  // This functions automatically sets created_at and updated_at
   modelCreate(aCollection,aValues) {
     aValues = Object.assign({},aValues,{
       created_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp(),
@@ -87,15 +99,9 @@ var FirebaseExtra = class {
     });
     return this.create(aCollection,aValues)
   }
-  
-  // will fail if the document doesn't exist
-  update(aCollection,aId,aUpdates) {
-    if (!Object.keys(aUpdates).length)
-      return Promise.resolve();
-    var result = this.firestore.collection(aCollection).doc(aId).update(aUpdates);
-    return FirebaseExtra.timeout(result,this.timeoutms);
-  }
-  
+
+  // Use this with the modelFieldsOk security rules function
+  // This functions automatically sets updated_at
   modelUpdate(aCollection,aId,aValues) {
     aValues = Object.assign({},aValues,{
       updated_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp()
