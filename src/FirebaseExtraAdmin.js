@@ -1,6 +1,7 @@
 'use strict';
 
 import FirebaseExtra from './FirebaseExtra';
+import Roles from './Roles';
 import FirebaseAdminUtils from './FirebaseAdminUtils';
 
 var isNode = (typeof module !== 'undefined' && typeof module.exports !== 'undefined');
@@ -310,6 +311,16 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 		return client;
 	}
 
+	async expandSpecifiedRolesToUserClaim(aRoleTree,aUid,aSpecRoles) {
+		let allRoles = FirebaseExtraAdmin.Roles.expandRoles(aRoleTree,aSpecRoles);
+		let claims = await this.getCustomUserClaims(aUid);
+		claims = Object.assign({},claims,{roles: allRoles});
+		await this.setCustomUserClaims(aUid,claims);
+		return allRoles;
+	}
+
 };
+
+FirebaseExtraAdmin.Roles = Roles;
 
 export default FirebaseExtraAdmin;
