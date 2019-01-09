@@ -7,9 +7,9 @@ var FirebaseExtra = class {
     this.firebaseSdk = firebaseSdk;
     this.timeoutms = 20000;
     console.log('before initializeApp');
-    // 'DEFAULT' must exist for some API methods that use the default instance
+    // '[DEFAULT]' must exist for some API methods that use the default instance
     if (this.firebaseSdk) {
-      var appname = this.firebaseSdk.apps.find(a => a.name == 'DEFAULT') ? config.projectId + '-admin' + Math.random().toString().replace('0.', '-') : 'DEFAULT';
+      var appname = this.firebaseSdk.apps.find(a => a.name == '[DEFAULT]') ? config.projectId + '-admin' + Math.random().toString().replace('0.', '-') : '[DEFAULT]';
       this.app = this.firebaseSdk.initializeApp({
         apiKey: config.apiKey,
         authDomain: config.authDomain,
