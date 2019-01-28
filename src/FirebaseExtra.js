@@ -202,6 +202,27 @@ var FirebaseExtra = class {
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
 
+  // !!! new work to replace currentUser below
+  // currentUser(aPersistence) {
+  //   return FirebaseExtra.timeout(
+  //     new Promise((resolve, reject) => {
+  //       let lambda = ()=>{
+  //         const unsubscribe = this.auth.onAuthStateChanged(user => {
+  //           unsubscribe();
+  //           resolve(user);
+  //         }, reject);
+  //       };
+  //       if (aPersistence)
+  //         this.firebase.auth.setPersistence(this.firebase.firebaseSdk.auth.Auth.Persistence.LOCAL)
+  //           .then(lambda)
+  //           .catch(reject);
+  //       else
+  //         lambda();
+  //     }),
+  //     this.timeoutms
+  //   );
+  // }
+
   currentUser() {
     return new Promise((resolve, reject) => {
       const unsubscribe = this.auth.onAuthStateChanged(user => {

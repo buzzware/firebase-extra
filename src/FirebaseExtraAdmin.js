@@ -287,6 +287,13 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 		return FirebaseExtra.timeout(promise,this.timeoutms);
 	}
 
+	verifyIdToken(aIdToken,aCheckRevoked) {
+		let promise = new Promise((resolve, reject) => {
+			this.adminAuth.verifyIdToken(aIdToken,aCheckRevoked).then(resolve,reject);
+		});
+		return FirebaseExtra.timeout(promise,this.timeoutms);
+	}
+
 	setCustomUserClaims(uid,claims) {
 		let promise = this.adminAuth.setCustomUserClaims(uid,claims);
 		return FirebaseExtra.timeout(promise,30000);
