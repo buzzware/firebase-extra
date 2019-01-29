@@ -88,57 +88,47 @@ var FirebaseExtra = class {
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
 
-  // Use this with the modelFieldsOk security rules function
-  // This functions automatically sets created_at and updated_at
-  modelCreate(aCollection,aValues) {
-    aValues = Object.assign({},aValues,{
-      created_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp(),
-      updated_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp()
-    });
-    return this.create(aCollection,aValues)
+  get serverTimestamp() {
+    return this.firebaseSdk.firestore.FieldValue.serverTimestamp();
   }
 
   // Use this with the modelFieldsOk security rules function
-  // This functions automatically sets updated_at
+  // This function automatically sets created_at and updated_at for creating on the server,
+  // and removes them from the response. If you need them, use modelCreateAndGet
+  modelCreate(aCollection,aValues) {
+    aValues = Object.assign({},aValues,{
+      created_at: this.serverTimestamp,
+      updated_at: this.serverTimestamp
+    });
+    let response = this.create(aCollection,aValues);
+    delete response.created_at;
+    delete response.updated_at;
+    return response;
+  }
+
+  // This calls modelCreate, then gets the result from the server, ensuring
+  // that you have a full and correct copy of the model from the server.
+  async modelCreateAndGet(aCollection,aValues) {
+    var response = await this.modelCreate(aCollection,aValues);
+    var result = await this.getFresh(response.collection,response.id);
+    return result;
+  }
+
+  // Use this with the modelFieldsOk security rules function
+  // This functions automatically sets updated_at and protects id and created_at from abuse
   modelUpdate(aCollection,aId,aValues) {
     aValues = Object.assign({},aValues,{
-      updated_at: this.firebaseSdk.firestore.FieldValue.serverTimestamp()
+      updated_at: this.serverTimestamp
     });
+    delete aValues.id;
+    delete aValues.created_at;
     return this.update(aCollection,aId,aValues);
   }
 
-  kojacKeySet(aKey, aValue) {
-    var [r, i] = aKey.split('__');
-    var result = this.firestore.collection(r).doc(i).set(aValue);
-    return FirebaseExtra.timeout(result,this.timeoutms);
-  }
-
-  kojacKeyGetRef(aKey,aOptions) {
-    var [r, i] = aKey.split('__');
-    var result = this.firestore.collection(r).doc(i).get(aOptions);
-    return FirebaseExtra.timeout(result,this.timeoutms);
-  }
-
-  async kojacKeyGet(aKey,aOptions) {
-    var ref = await this.kojacKeyGetRef(aKey,aOptions);
-    return ref.exists ? ref.data() : null;
-  }
-
-  kojacKeyUpdate(aKey,aUpdates) {
-    if (!Object.keys(aUpdates).length)
-      return Promise.resolve();
-    var [r, i] = aKey.split('__');
-    var result = this.firestore.collection(r).doc(i).update(aUpdates);
-    return FirebaseExtra.timeout(result,this.timeoutms);
-  }
-
-  kojacKeyClear(aKey) {
-    var [r, i] = aKey.split('__');
-    if (!i)
-      throw new Error('clear all of a resource not supported');
-
-    var result = this.firestore.collection(r).doc(i).delete();
-    return FirebaseExtra.timeout(result,this.timeoutms);
+  async modelUpdateAndGet(aCollection,aId,aValues) {
+    var response = await this.modelUpdate(aCollection,aId,aValues);
+    var result = await this.getFresh(response.collection,response.id);
+    return result;
   }
 
   createItem(resource, value) {
@@ -200,6 +190,27 @@ var FirebaseExtra = class {
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
 
+  // !!! new work to replace currentUser below
+  // currentUser(aPersistence) {
+  //   return FirebaseExtra.timeout(
+  //     new Promise((resolve, reject) => {
+  //       let lambda = ()=>{
+  //         const unsubscribe = this.auth.onAuthStateChanged(user => {
+  //           unsubscribe();
+  //           resolve(user);
+  //         }, reject);
+  //       };
+  //       if (aPersistence)
+  //         this.firebase.auth.setPersistence(this.firebase.firebaseSdk.auth.Auth.Persistence.LOCAL)
+  //           .then(lambda)
+  //           .catch(reject);
+  //       else
+  //         lambda();
+  //     }),
+  //     this.timeoutms
+  //   );
+  // }
+
   currentUser() {
     return new Promise((resolve, reject) => {
       const unsubscribe = this.auth.onAuthStateChanged(user => {
@@ -237,9 +248,10 @@ var FirebaseExtra = class {
       method: 'post',
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'private, no-cache, no-store, must-revalidate'
       },
-      credentials: 'include',
+      credentials: 'same-origin',
       body: JSON.stringify(body)
     });
     return await this.HandleResponse(response);
@@ -250,13 +262,53 @@ var FirebaseExtra = class {
       method: 'get',
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'private, no-cache, no-store, must-revalidate'
       },
-      credentials: 'include',
+      credentials: 'same-origin',
       params: aParams
     });
     return await this.HandleResponse(response);
   }
+
+  //
+  //  Deprecated Below
+  //
+
+  kojacKeySet(aKey, aValue) {
+    var [r, i] = aKey.split('__');
+    var result = this.firestore.collection(r).doc(i).set(aValue);
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+
+  kojacKeyGetRef(aKey,aOptions) {
+    var [r, i] = aKey.split('__');
+    var result = this.firestore.collection(r).doc(i).get(aOptions);
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+
+  async kojacKeyGet(aKey,aOptions) {
+    var ref = await this.kojacKeyGetRef(aKey,aOptions);
+    return ref.exists ? ref.data() : null;
+  }
+
+  kojacKeyUpdate(aKey,aUpdates) {
+    if (!Object.keys(aUpdates).length)
+      return Promise.resolve();
+    var [r, i] = aKey.split('__');
+    var result = this.firestore.collection(r).doc(i).update(aUpdates);
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+
+  kojacKeyClear(aKey) {
+    var [r, i] = aKey.split('__');
+    if (!i)
+      throw new Error('clear all of a resource not supported');
+
+    var result = this.firestore.collection(r).doc(i).delete();
+    return FirebaseExtra.timeout(result,this.timeoutms);
+  }
+
 };
 
 // BEGIN from https://github.com/building5/promise-timeout

@@ -99,6 +99,10 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 		return this.adminApp.firestore();
 	}
 
+  get serverTimestamp() {
+    return this.adminSdk.firestore.FieldValue.serverTimestamp();
+  }
+
 	get adminAuth() {
 		if (!this.adminSdk || !this.adminApp) // properties are read before init or create, so we return null and don't crash when no adminSdk
 			return null;
@@ -186,18 +190,6 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 	createUser(aFields) {
 		var result = this.adminAuth.createUser(aFields);
 		return FirebaseExtra.timeout(result,this.timeoutms);
-	}
-
-	createModel(aCollection,aData) {
-		return FirebaseExtra.timeout(FirebaseAdminUtils.createModelInternal(this.adminApp,{collection: aCollection,data: aData}),this.timeoutms);
-	}
-
-	updateModel(aCollection,aId,aData) {
-		return FirebaseExtra.timeout(FirebaseAdminUtils.updateModelInternal(this.adminApp,{collection: aCollection,id: aId, data: aData}),this.timeoutms);
-	}
-
-	destroyAll(aCollection) {
-		return FirebaseExtra.timeout(FirebaseAdminUtils.destroyCollectionInternal(this.adminApp,{collection: aCollection}),this.timeoutms);
 	}
 
 	forAllUsers(callback,batchCount=50,batchTimeoutms=30000,nextPageToken=undefined) {
@@ -343,6 +335,13 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 		return FirebaseExtra.timeout(promise,this.timeoutms);
 	}
 
+	verifyIdToken(aIdToken,aCheckRevoked) {
+		let promise = new Promise((resolve, reject) => {
+			this.adminAuth.verifyIdToken(aIdToken,aCheckRevoked).then(resolve,reject);
+		});
+		return FirebaseExtra.timeout(promise,this.timeoutms);
+	}
+
 	setCustomUserClaims(uid,claims) {
 		let promise = this.adminAuth.setCustomUserClaims(uid,claims);
 		return FirebaseExtra.timeout(promise,30000);
@@ -373,6 +372,26 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 		claims = Object.assign({},claims,{roles: allRoles});
 		await this.setCustomUserClaims(aUid,claims);
 		return allRoles;
+	}
+
+
+
+	//
+	// Deprecated Methods
+	//
+
+	//use modelCreate
+	createModel(aCollection,aData) {
+		return FirebaseExtra.timeout(FirebaseAdminUtils.createModelInternal(this.adminApp,{collection: aCollection,data: aData}),this.timeoutms);
+	}
+
+	//use modelUpdate
+	updateModel(aCollection,aId,aData) {
+		return FirebaseExtra.timeout(FirebaseAdminUtils.updateModelInternal(this.adminApp,{collection: aCollection,id: aId, data: aData}),this.timeoutms);
+	}
+
+	destroyAll(aCollection) {
+		return FirebaseExtra.timeout(FirebaseAdminUtils.destroyCollectionInternal(this.adminApp,{collection: aCollection}),this.timeoutms);
 	}
 
 };
