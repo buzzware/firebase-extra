@@ -1,7 +1,6 @@
 'use strict';
 
 import FirebaseExtra from './FirebaseExtra';
-import Roles from './Roles';
 import FirebaseAdminUtils from './FirebaseAdminUtils';
 
 var isNode = (typeof module !== 'undefined' && typeof module.exports !== 'undefined');
@@ -45,6 +44,10 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 
   get serverTimestamp() {
     return this.adminSdk.firestore.FieldValue.serverTimestamp();
+  }
+
+  get deleteFieldValue() {
+    return this.adminSdk.firestore.FieldValue.delete();
   }
 
 	get adminAuth() {
@@ -342,7 +345,6 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 
 FirebaseExtraAdmin.timeout = FirebaseExtra.timeout;
 FirebaseExtraAdmin.TimeoutError = FirebaseExtra.TimeoutError;
-
-FirebaseExtraAdmin.Roles = Roles;
+FirebaseExtraAdmin.Roles = FirebaseExtra.Roles;
 
 export default FirebaseExtraAdmin;

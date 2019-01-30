@@ -1,5 +1,7 @@
 'use strict';
 
+import Roles from './Roles';
+
 var isNode = (typeof module !== 'undefined' && module.exports);
 
 var FirebaseExtra = class {
@@ -92,6 +94,10 @@ var FirebaseExtra = class {
 
   get serverTimestamp() {
     return this.firebaseSdk.firestore.FieldValue.serverTimestamp();
+  }
+
+  get deleteFieldValue() {
+    return this.firebaseSdk.firestore.FieldValue.delete();
   }
 
   // Use this with the modelFieldsOk security rules function
@@ -351,5 +357,7 @@ FirebaseExtra.timeout = function(promise, timeoutMillis) {
     throw err;
   });
 };
+
+FirebaseExtra.Roles = Roles;
 
 export default FirebaseExtra;
