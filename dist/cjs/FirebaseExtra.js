@@ -1,5 +1,7 @@
 'use strict';
 
+Object.defineProperty(exports, '__esModule', { value: true });
+
 const RoleNode = class RoleNode {
 	constructor(aRoles,aFullRole) {
 		this.roles = aRoles;
@@ -89,6 +91,18 @@ const Roles = class Roles {
 		this.add(aLeaf);
 		return node;
 	}
+
+	static fullRole(aSpecRole,aRoleTree) {
+		if (aSpecRole.contains('.'))
+			return aSpecRole;
+		for (let tr of aRoleTree) {
+			var trnodes = tr.split('.');
+			let nodei = trnodes.indexOf(aSpecRole);
+			if (nodei >= 0)
+				return trnodes.slice(0, nodei + 1);
+		}
+	}
+
 };
 
 Roles.tree = [];
@@ -101,6 +115,8 @@ var FirebaseExtra = class {
     this.config = config;
     this.firebaseSdk = firebaseSdk;
     this.timeoutms = 20000;
+    this.auth_persistence = null;
+    this.inited = false;
     console.log('before initializeApp');
     // '[DEFAULT]' must exist for some API methods that use the default instance
     if (this.firebaseSdk) {
@@ -110,8 +126,27 @@ var FirebaseExtra = class {
         authDomain: config.authDomain,
         projectId: config.projectId
       }, appname);
+      this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
       this.app.firestore().settings({timestampsInSnapshots: true});
     }
+  }
+
+  // Call auth.setPersistence with auth_persistence value
+  // this is async
+  _applyAuthPersistence() {
+    return new Promise((resolve, reject) => {
+        let value = this.auth_persistence || 'none';
+        this.auth.setPersistence(value)
+          .then(resolve)
+          .catch(reject);
+    });
+  }
+
+  async init() {
+    if (this.inited)
+      return;
+    await this._applyAuthPersistence();
+    this.inited = true;
   }
 
   dispose() {
@@ -136,7 +171,7 @@ var FirebaseExtra = class {
   }
 
   getRef(aCollection,aId,aOptions={}) {
-    var result = this.firestore.collection(aCollection).doc(aId).get(aOptions);
+    var result = this.firestore.collection(aCollection).doc(String(aId)).get(aOptions);
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
   
@@ -151,14 +186,14 @@ var FirebaseExtra = class {
   }
   
   set(aCollection,aId,aValues) {
-    var result = this.firestore.collection(aCollection).doc(aId).set(aValues).then(()=>aValues);
+    var result = this.firestore.collection(aCollection).doc(String(aId)).set(aValues).then(()=>aValues);
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
   
   clear(aCollection,aId) {
     if (!aId)
       throw new Error('clear all of a resource not supported');
-    var result = this.firestore.collection(aCollection).doc(aId).delete();
+    var result = this.firestore.collection(aCollection).doc(String(aId)).delete();
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
   
@@ -179,7 +214,7 @@ var FirebaseExtra = class {
   update(aCollection,aId,aUpdates) {
     if (!Object.keys(aUpdates).length)
       return Promise.resolve();
-    var result = this.firestore.collection(aCollection).doc(aId).update(aUpdates);
+    var result = this.firestore.collection(aCollection).doc(String(aId)).update(aUpdates);
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
 
@@ -228,6 +263,47 @@ var FirebaseExtra = class {
     var response = await this.modelUpdate(aCollection,aId,aValues);
     var result = await this.getFresh(response.collection,response.id);
     return result;
+  }
+
+  // try to create, then update if it already exists
+  async crupdate(aCollection, aId, aValues) {
+    if (!aValues || !Object.keys(aValues))
+      return;
+    try {
+      let createValues;
+      if (aId) {
+        createValues = Object.assign({},aValues);
+        createValues.id = aId;
+      } else {
+        createValues = aValues;
+      }
+      await this.create(aCollection, createValues);
+    } catch(e) {
+      if (!aId)		// id wasn't given, so the failure must be something besides a key clash
+        throw e;
+      await this.update(aCollection, aId, aValues);
+    }
+  }
+
+  // !!! could also add upsert(), which tries to update then creates if missing
+
+  async modelCrupdate(aCollection, aId, aValues) {
+    if (!aValues || !Object.keys(aValues))
+      return;
+    try {
+      let createValues;
+      if (aId) {
+        createValues = Object.assign({},aValues);
+        createValues.id = aId;
+      } else {
+        createValues = aValues;
+      }
+      await this.modelCreate(aCollection, createValues);
+    } catch(e) {
+      if (!aValues || !Object.keys(aValues))
+        return;
+      await this.modelUpdate(aCollection, aId, aValues);
+    }
   }
 
   createItem(resource, value) {
@@ -289,41 +365,18 @@ var FirebaseExtra = class {
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
 
-  // !!! new work to replace currentUser below
-  // currentUser(aPersistence) {
-  //   return FirebaseExtra.timeout(
-  //     new Promise((resolve, reject) => {
-  //       let lambda = ()=>{
-  //         const unsubscribe = this.auth.onAuthStateChanged(user => {
-  //           unsubscribe();
-  //           resolve(user);
-  //         }, reject);
-  //       };
-  //       if (aPersistence)
-  //         this.firebase.auth.setPersistence(this.firebase.firebaseSdk.auth.Auth.Persistence.LOCAL)
-  //           .then(lambda)
-  //           .catch(reject);
-  //       else
-  //         lambda();
-  //     }),
-  //     this.timeoutms
-  //   );
-  // }
-
   currentUser() {
-    return new Promise((resolve, reject) => {
-      const unsubscribe = this.auth.onAuthStateChanged(user => {
-        unsubscribe();
-        resolve(user);
-      }, reject);
-    });
+    return this.init().then(
+      new Promise((resolve, reject) => {
+        const unsubscribe = this.auth.onAuthStateChanged(user => {
+          unsubscribe();
+          resolve(user||null);
+        }, reject);
+      })
+    );
   }
 
   currentUserId () { return this.currentUser().then(u => u ? u.uid : null); }
-
-  getCurrentPerson() {
-    return this.currentUser().then(u => u ? this.kojacKeyGet('Person__'+u.uid) : null);
-  }
 
   async HandleResponse(aResponse) {
     let result = aResponse.headers.get('Content-Type').indexOf('json')>=0 ? await aResponse.json() : await aResponse.text();
@@ -373,6 +426,10 @@ var FirebaseExtra = class {
   //
   //  Deprecated Below
   //
+
+  getCurrentPerson() {
+    return this.currentUser().then(u => u ? this.kojacKeyGet('Person__'+u.uid) : null);
+  }
 
   kojacKeySet(aKey, aValue) {
     var [r, i] = aKey.split('__');
@@ -451,4 +508,5 @@ FirebaseExtra.timeout = function(promise, timeoutMillis) {
 
 FirebaseExtra.Roles = Roles;
 
-module.exports = FirebaseExtra;
+exports.default = FirebaseExtra;
+exports.Roles = Roles;

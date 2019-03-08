@@ -23,6 +23,8 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 			databaseURL: config.databaseURL
 		};
 		this.adminApp = this.adminSdk.initializeApp(options,appname);
+		if (adminSdk)
+			this.auth_persistence = adminSdk.auth.Auth.Persistence.NONE;
 		this.adminApp.firestore().settings({timestampsInSnapshots: true});
 	}
 
@@ -180,6 +182,86 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 		return displayName;
 	}
 
+	createCustomToken(aUid, aClaims) {
+		let promise = new Promise((resolve, reject) => {
+			this.adminAuth.createCustomToken(aUid, aClaims).then(resolve,reject);
+		});
+		return FirebaseExtra.timeout(promise,this.timeoutms);
+	}
+
+	createSessionCookie(aIdToken,expiresInms) {
+		let promise = new Promise((resolve, reject) => {
+			this.adminAuth.createSessionCookie(aIdToken, {expiresIn: expiresInms}).then(resolve,reject);
+		});
+		return FirebaseExtra.timeout(promise,this.timeoutms);
+	}
+
+	verifySessionCookie(aCookie,aCheckRevoked) {
+		let promise = new Promise((resolve, reject) => {
+			this.adminAuth.verifySessionCookie(aCookie,aCheckRevoked).then(resolve,reject);
+		});
+		return FirebaseExtra.timeout(promise,this.timeoutms);
+	}
+
+	verifyIdToken(aIdToken,aCheckRevoked) {
+		let promise = new Promise((resolve, reject) => {
+			this.adminAuth.verifyIdToken(aIdToken,aCheckRevoked).then(resolve,reject);
+		});
+		return FirebaseExtra.timeout(promise,this.timeoutms);
+	}
+
+	setCustomUserClaims(uid,claims) {
+		let promise = this.adminAuth.setCustomUserClaims(uid,claims);
+		return FirebaseExtra.timeout(promise,30000);
+	}
+
+	// this is for convenience. It will be more efficient to use the user customClaims property directly if you have a user record
+	getCustomUserClaims(uid) {
+		let promise = this.adminAuth.getUser(uid).then(u => u.customClaims);
+		return FirebaseExtra.timeout(promise,30000);
+	}
+
+	verifyIdTokenAndGetClaims(aToken) {
+		let promise = this.adminAuth.verifyIdToken(aToken);
+		return FirebaseExtra.timeout(promise,30000);
+	}
+
+	// create a FirebaseExtra client impersonating the given uid
+	async clientForUser(uid,claims=null) {
+		let customToken = await (claims ? this.createCustomToken(uid,claims) : this.createCustomToken(uid));
+		let client = new FirebaseExtra(this.config,this.firebaseSdk);
+		let userCredential = await client.auth.signInWithCustomToken(customToken);
+		return client;
+	}
+
+	async expandSpecifiedRolesToUserClaim(aRoleTree,aUid,aSpecRoles) {
+		let allRoles = FirebaseExtraAdmin.Roles.expandRoles(aRoleTree,aSpecRoles);
+		let claims = await this.getCustomUserClaims(aUid);
+		claims = Object.assign({},claims,{roles: allRoles});
+		await this.setCustomUserClaims(aUid,claims);
+		return allRoles;
+	}
+
+
+
+	//
+	// Deprecated Methods
+	//
+
+	//use modelCreate
+	createModel(aCollection,aData) {
+		return FirebaseExtra.timeout(FirebaseAdminUtils.createModelInternal(this.adminApp,{collection: aCollection,data: aData}),this.timeoutms);
+	}
+
+	//use modelUpdate
+	updateModel(aCollection,aId,aData) {
+		return FirebaseExtra.timeout(FirebaseAdminUtils.updateModelInternal(this.adminApp,{collection: aCollection,id: aId, data: aData}),this.timeoutms);
+	}
+
+	destroyAll(aCollection) {
+		return FirebaseExtra.timeout(FirebaseAdminUtils.destroyCollectionInternal(this.adminApp,{collection: aCollection}),this.timeoutms);
+	}
+
 	async ensureUserAndPerson(aDetails) {
 		aDetails = Object.assign({},aDetails);
 		console.log('ensureUserAndPerson ' + aDetails.email);
@@ -261,86 +343,6 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 			person_key: key,
 			uid: user.uid
 		};
-	}
-
-	createCustomToken(aUid, aClaims) {
-		let promise = new Promise((resolve, reject) => {
-			this.adminAuth.createCustomToken(aUid, aClaims).then(resolve,reject);
-		});
-		return FirebaseExtra.timeout(promise,this.timeoutms);
-	}
-
-	createSessionCookie(aIdToken,expiresInms) {
-		let promise = new Promise((resolve, reject) => {
-			this.adminAuth.createSessionCookie(aIdToken, {expiresIn: expiresInms}).then(resolve,reject);
-		});
-		return FirebaseExtra.timeout(promise,this.timeoutms);
-	}
-
-	verifySessionCookie(aCookie,aCheckRevoked) {
-		let promise = new Promise((resolve, reject) => {
-			this.adminAuth.verifySessionCookie(aCookie,aCheckRevoked).then(resolve,reject);
-		});
-		return FirebaseExtra.timeout(promise,this.timeoutms);
-	}
-
-	verifyIdToken(aIdToken,aCheckRevoked) {
-		let promise = new Promise((resolve, reject) => {
-			this.adminAuth.verifyIdToken(aIdToken,aCheckRevoked).then(resolve,reject);
-		});
-		return FirebaseExtra.timeout(promise,this.timeoutms);
-	}
-
-	setCustomUserClaims(uid,claims) {
-		let promise = this.adminAuth.setCustomUserClaims(uid,claims);
-		return FirebaseExtra.timeout(promise,30000);
-	}
-
-	// this is for convenience. It will be more efficient to use the user customClaims property directly if you have a user record
-	getCustomUserClaims(uid) {
-		let promise = this.adminAuth.getUser(uid).then(u => u.customClaims);
-		return FirebaseExtra.timeout(promise,30000);
-	}
-
-	verifyIdTokenAndGetClaims(aToken) {
-		let promise = this.adminAuth.verifyIdToken(aToken);
-		return FirebaseExtra.timeout(promise,30000);
-	}
-
-	// create a FirebaseExtra client impersonating the given uid
-	async clientForUser(uid,claims=null) {
-		let customToken = await (claims ? this.createCustomToken(uid,claims) : this.createCustomToken(uid));
-		let client = new FirebaseExtra(this.config,this.firebaseSdk);
-		let userCredential = await client.auth.signInWithCustomToken(customToken);
-		return client;
-	}
-
-	async expandSpecifiedRolesToUserClaim(aRoleTree,aUid,aSpecRoles) {
-		let allRoles = FirebaseExtraAdmin.Roles.expandRoles(aRoleTree,aSpecRoles);
-		let claims = await this.getCustomUserClaims(aUid);
-		claims = Object.assign({},claims,{roles: allRoles});
-		await this.setCustomUserClaims(aUid,claims);
-		return allRoles;
-	}
-
-
-
-	//
-	// Deprecated Methods
-	//
-
-	//use modelCreate
-	createModel(aCollection,aData) {
-		return FirebaseExtra.timeout(FirebaseAdminUtils.createModelInternal(this.adminApp,{collection: aCollection,data: aData}),this.timeoutms);
-	}
-
-	//use modelUpdate
-	updateModel(aCollection,aId,aData) {
-		return FirebaseExtra.timeout(FirebaseAdminUtils.updateModelInternal(this.adminApp,{collection: aCollection,id: aId, data: aData}),this.timeoutms);
-	}
-
-	destroyAll(aCollection) {
-		return FirebaseExtra.timeout(FirebaseAdminUtils.destroyCollectionInternal(this.adminApp,{collection: aCollection}),this.timeoutms);
 	}
 
 };

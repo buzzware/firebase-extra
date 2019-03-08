@@ -89,6 +89,18 @@ const Roles = class Roles {
 		this.add(aLeaf);
 		return node;
 	}
+
+	static fullRole(aSpecRole,aRoleTree) {
+		if (aSpecRole.contains('.'))
+			return aSpecRole;
+		for (let tr of aRoleTree) {
+			var trnodes = tr.split('.');
+			let nodei = trnodes.indexOf(aSpecRole);
+			if (nodei >= 0)
+				return trnodes.slice(0, nodei + 1);
+		}
+	}
+
 };
 
 Roles.tree = [];
