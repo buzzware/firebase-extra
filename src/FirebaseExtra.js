@@ -261,14 +261,14 @@ var FirebaseExtra = class {
   }
 
   currentUser() {
-    return this.init().then(
-      new Promise((resolve, reject) => {
+    return this.init().then(()=>{
+      return new Promise((resolve, reject) => {
         const unsubscribe = this.auth.onAuthStateChanged(user => {
           unsubscribe();
           resolve(user||null);
         }, reject);
-      })
-    );
+      });
+    });
   }
 
   currentUserId () { return this.currentUser().then(u => u ? u.uid : null); }
