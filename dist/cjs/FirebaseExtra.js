@@ -135,7 +135,7 @@ var FirebaseExtra = class {
   // this is async
   _applyAuthPersistence() {
     return new Promise((resolve, reject) => {
-        let value = this.auth_persistence || 'none';
+        let value = this.auth_persistence || this.firebaseSdk.auth.Auth.Persistence.NONE;
         this.auth.setPersistence(value)
           .then(resolve)
           .catch(reject);
@@ -160,7 +160,6 @@ var FirebaseExtra = class {
     if (!this.firebaseSdk || !this.app) // properties are read before init or create, so we return null and don't crash when no firebase
       return null;
     var auth = this.firebaseSdk.auth(this.app);
-    auth.setPersistence(isNode ? this.firebaseSdk.auth.Auth.Persistence.NONE : this.firebaseSdk.auth.Auth.Persistence.LOCAL);
     return auth;
   }
 
