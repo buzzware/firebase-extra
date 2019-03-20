@@ -21,8 +21,10 @@ var FirebaseExtra = class {
         authDomain: config.authDomain,
         projectId: config.projectId
       }, appname);
-      this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
-      this.app.firestore().settings({timestampsInSnapshots: true});
+      if (this.firebaseSdk.auth)
+        this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
+      if (this.app.firestore())
+        this.app.firestore().settings({timestampsInSnapshots: true});
     }
   }
 
