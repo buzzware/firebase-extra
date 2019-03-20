@@ -128,7 +128,7 @@ var FirebaseExtra = class {
       }, appname);
       if (this.firebaseSdk.auth)
         this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
-      if (this.app.firestore())
+      if (this.app.firestore)
         this.app.firestore().settings({timestampsInSnapshots: true});
     }
   }
@@ -380,6 +380,14 @@ var FirebaseExtra = class {
 
   currentUserId () { return this.currentUser().then(u => u ? u.uid : null); }
 
+  getSessionToken(aForceRefresh=false) {
+    let user = this.auth && this.auth.currentUser;
+    if (!user)
+      return Promise.resolve(null);
+    var promise = this.auth.currentUser.getIdToken(aForceRefresh);
+    return FirebaseExtra.timeout(promise,this.timeoutms);
+  }
+
   async HandleResponse(aResponse) {
     let result = aResponse.headers.get('Content-Type').indexOf('json')>=0 ? await aResponse.json() : await aResponse.text();
     if (aResponse.ok) {
@@ -397,14 +405,18 @@ var FirebaseExtra = class {
   async postFunction(aFunction,aInput) {
     let body = aInput;//this.encode(aInput);
     let url = this.config.functionsBaseUrl+aFunction;
+    let token = await this.getSessionToken();
 
+    let headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Cache-Control': 'private, no-cache, no-store, must-revalidate'
+    };
+    if (token)
+      headers.Authorization = 'Bearer '+token;
     let response = await fetch(url, {
       method: 'post',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'private, no-cache, no-store, must-revalidate'
-      },
+      headers: headers,
       credentials: 'same-origin',
       body: JSON.stringify(body)
     });
@@ -412,13 +424,17 @@ var FirebaseExtra = class {
   }
 
   async getFunction(aFunction,aParams) {
+    let headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Cache-Control': 'private, no-cache, no-store, must-revalidate'
+    };
+    let token = await this.getSessionToken();
+    if (token)
+      headers.Authorization = 'Bearer '+token;
     let response = await fetch(aFunction,{
       method: 'get',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'private, no-cache, no-store, must-revalidate'
-      },
+      headers: headers,
       credentials: 'same-origin',
       params: aParams
     });
