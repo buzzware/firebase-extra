@@ -19,8 +19,6 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 			databaseURL: config.databaseURL
 		};
 		this.adminApp = this.adminSdk.initializeApp(options,appname);
-		if (adminSdk)
-			this.auth_persistence = adminSdk.auth.Auth.Persistence.NONE;
 		this.adminApp.firestore().settings({timestampsInSnapshots: true});
 	}
 

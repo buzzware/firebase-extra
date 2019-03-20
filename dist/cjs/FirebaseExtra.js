@@ -126,8 +126,10 @@ var FirebaseExtra = class {
         authDomain: config.authDomain,
         projectId: config.projectId
       }, appname);
-      this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
-      this.app.firestore().settings({timestampsInSnapshots: true});
+      if (this.firebaseSdk.auth)
+      	this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
+      if (this.app.firestore)
+      	this.app.firestore().settings({timestampsInSnapshots: true});
     }
   }
 
@@ -135,18 +137,19 @@ var FirebaseExtra = class {
   // this is async
   _applyAuthPersistence() {
     return new Promise((resolve, reject) => {
-        let value = this.auth_persistence || this.firebaseSdk.auth.Auth.Persistence.NONE;
-        this.auth.setPersistence(value)
-          .then(resolve)
-          .catch(reject);
+      if (!this.auth_persistence)
+        resolve();
+      this.auth.setPersistence(this.auth_persistence)
+        .then(resolve)
+        .catch(reject);
     });
   }
 
   async init() {
     if (this.inited)
       return;
-    await this._applyAuthPersistence();
     this.inited = true;
+    await this._applyAuthPersistence();
   }
 
   dispose() {

@@ -131,18 +131,19 @@ var FirebaseExtra = class {
   // this is async
   _applyAuthPersistence() {
     return new Promise((resolve, reject) => {
-        let value = this.auth_persistence || this.firebaseSdk.auth.Auth.Persistence.NONE;
-        this.auth.setPersistence(value)
-          .then(resolve)
-          .catch(reject);
+      if (!this.auth_persistence)
+        resolve();
+      this.auth.setPersistence(this.auth_persistence)
+        .then(resolve)
+        .catch(reject);
     });
   }
 
   async init() {
     if (this.inited)
       return;
-    await this._applyAuthPersistence();
     this.inited = true;
+    await this._applyAuthPersistence();
   }
 
   dispose() {
