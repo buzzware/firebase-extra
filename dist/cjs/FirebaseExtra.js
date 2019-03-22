@@ -397,6 +397,7 @@ var FirebaseExtra = class {
         return result;
     } else {
       let e = new Error(aResponse.statusText);
+      e.statusCode = aResponse.status;
       e.body = result;
       throw e;
     }
