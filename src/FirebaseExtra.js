@@ -141,7 +141,7 @@ var FirebaseExtra = class {
   // that you have a full and correct copy of the model from the server.
   async modelCreateAndGet(aCollection,aValues) {
     var response = await this.modelCreate(aCollection,aValues);
-    var result = await this.getFresh(response.collection,response.id);
+    var result = await this.getFresh(aCollection,response.id);
     return result;
   }
 
@@ -158,7 +158,7 @@ var FirebaseExtra = class {
 
   async modelUpdateAndGet(aCollection,aId,aValues) {
     var response = await this.modelUpdate(aCollection,aId,aValues);
-    var result = await this.getFresh(response.collection,response.id);
+    var result = await this.getFresh(aCollection,response.id);
     return result;
   }
 
