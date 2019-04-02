@@ -206,14 +206,12 @@ var FirebaseExtra = class {
     return this.set(aCollection,id,aValues);
   }
 
-  // Update a document
-  // will fail if the document doesn't exist
-  // Returns a promise resolving to undefined
   update(aCollection,aId,aUpdates) {
     if (!Object.keys(aUpdates).length)
       return Promise.resolve();
     var result = this.firestore.collection(aCollection).doc(String(aId)).update(aUpdates);
-    return FirebaseExtra.timeout(result,this.timeoutms);
+    aUpdates = Object.assign({},aUpdates,{id: aId});
+    return FirebaseExtra.timeout(result,this.timeoutms).then(()=> aUpdates);
   }
 
   get serverTimestamp() {
@@ -259,7 +257,7 @@ var FirebaseExtra = class {
 
   async modelUpdateAndGet(aCollection,aId,aValues) {
     var response = await this.modelUpdate(aCollection,aId,aValues);
-    var result = await this.getFresh(aCollection,response.id);
+    var result = await this.getFresh(aCollection,aId);
     return result;
   }
 
