@@ -172,6 +172,10 @@ var FirebaseExtra = class {
     return this.app.firestore();
   }
 
+  isPromise(obj) {
+    return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+  }
+
   getRef(aCollection,aId,aOptions={}) {
     var result = this.firestore.collection(aCollection).doc(String(aId)).get(aOptions);
     return FirebaseExtra.timeout(result,this.timeoutms);
@@ -323,13 +327,56 @@ var FirebaseExtra = class {
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
 
-  async getAllWhere(aCollection,aLimit,...aWhere) {
-    var query = this.firestore.collection(aCollection);
-    var whereArgs = aWhere.slice(0);
-    while(whereArgs.length) {
-      var clause = whereArgs.splice(0,3);
-      query = query.where(...clause);
+  collectionWhereQuery(aCollection, ...aWhere) {
+		var query = this.firestore.collection(aCollection);
+		var whereArgs = aWhere.slice(0);
+		while(whereArgs.length) {
+			var clause = whereArgs.splice(0,3);
+			query = query.where(...clause);
+		}
+		return query;
+	}
+
+	async forQueryBatch(aQuery,aBatchSize,aHandler) {
+    if (aBatchSize)
+      aQuery = aQuery.limit(aBatchSize);
+    let docs;
+    while (!docs || docs.length==aBatchSize) {
+      if (docs)
+        aQuery = aQuery.startAfter(docs[docs.length-1]);
+      let results = await FirebaseExtra.timeout(aQuery.get(), this.timeoutms);
+      docs = results.empty ? [] : results.docs;
+      let response = aHandler(docs.map(d=>d.data()));
+      if (this.isPromise(response))
+        response = await response;
     }
+	}
+
+	// Convenience method combining collectionWhereQuery and forQueryBatch
+	// usage : await firebase.forBatch('Things',10,'color','==','red','size','==','large',(thing) => { /* do something */ })
+	//
+  // async
+  forBatch(aCollection,aBatchSize,...args) {
+    let aHandler = args.pop();
+    let query = this.collectionWhereQuery(aCollection,...args);
+    return this.forQueryBatch(query,aBatchSize,aHandler);
+  }
+
+  // async
+  forBatchEach(aCollection,aBatchSize,...args) {
+    let aHandler = args.pop();
+    let query = this.collectionWhereQuery(aCollection,...args);
+    return this.forQueryBatch(query,aBatchSize, async (items) => {
+      for (let item of items) {
+        let response = aHandler(item);
+        if (this.isPromise(response))
+          await response;
+      }
+    });
+  }
+
+  async getAllWhere(aCollection,aLimit,...aWhere) {
+  	let query = this.collectionWhereQuery(aCollection,...aWhere);
     if (aLimit)
       query = query.limit(aLimit);
     var results = await FirebaseExtra.timeout(query.get(),this.timeoutms);
