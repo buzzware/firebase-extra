@@ -236,10 +236,18 @@ var FirebaseExtra = class {
     if (aBatchSize)
       aQuery = aQuery.limit(aBatchSize);
     let docs;
-    while (!docs || docs.length==aBatchSize) {
+    while (!docs || (docs.length==aBatchSize)) {
       if (docs)
         aQuery = aQuery.startAfter(docs[docs.length-1]);
-      let results = await FirebaseExtra.timeout(aQuery.get(), this.timeoutms);
+
+      let results;
+      try {
+        results = await FirebaseExtra.timeout(aQuery.get(), this.timeoutms);
+      } catch(e) {
+        if (e.code==9)      // need index generated, so make sure dev sees this
+          console.error(e);
+        throw e;
+      }
       docs = results.empty ? [] : results.docs;
       let response = aHandler(docs.map(d=>d.data()));
       if (this.isPromise(response))
@@ -274,7 +282,14 @@ var FirebaseExtra = class {
   	let query = this.collectionWhereQuery(aCollection,...aWhere);
     if (aLimit)
       query = query.limit(aLimit);
-    var results = await FirebaseExtra.timeout(query.get(),this.timeoutms);
+    let results;
+    try {
+      results = await FirebaseExtra.timeout(query.get(), this.timeoutms);
+    } catch(e) {
+      if (e.code==9)      // need index generated, so make sure dev sees this
+        console.error(e);
+      throw e;
+    }
     return results.empty ? [] : results.docs;
   }
 
