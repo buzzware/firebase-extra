@@ -67,7 +67,7 @@ var FirebaseExtra = class {
     return this.app.firestore();
   }
 
-  isPromise(obj) {
+  static isPromise(obj) {
     return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
   }
 
@@ -128,12 +128,12 @@ var FirebaseExtra = class {
   // Use this with the modelFieldsOk security rules function
   // This function automatically sets created_at and updated_at for creating on the server,
   // and removes them from the response. If you need them, use modelCreateAndGet
-  modelCreate(aCollection,aValues) {
+  async modelCreate(aCollection,aValues) {
     aValues = Object.assign({},aValues,{
       created_at: this.serverTimestamp,
       updated_at: this.serverTimestamp
     });
-    let response = this.create(aCollection,aValues);
+    let response = await this.create(aCollection,aValues);
     delete response.created_at;
     delete response.updated_at;
     return response;
@@ -185,10 +185,10 @@ var FirebaseExtra = class {
   }
 
   // !!! could also add upsert(), which tries to update then creates if missing
-
-  async modelCrupdate(aCollection, aId, aValues) {
+  // async
+  modelCrupdate(aCollection, aId, aValues) {
     if (!aValues || !Object.keys(aValues))
-      return;
+      return Promise.resolve();
     try {
       let createValues;
       if (aId) {
@@ -197,11 +197,11 @@ var FirebaseExtra = class {
       } else {
         createValues = aValues;
       }
-      await this.modelCreate(aCollection, createValues);
+      return this.modelCreate(aCollection, createValues);
     } catch(e) {
       if (!aValues || !Object.keys(aValues))
         return;
-      await this.modelUpdate(aCollection, aId, aValues);
+      return this.modelUpdate(aCollection, aId, aValues);
     }
   }
 
@@ -232,6 +232,52 @@ var FirebaseExtra = class {
 		return query;
 	}
 
+  async queryBatch(aQuery,aHandler,aBatchSize=10) {
+    if (aBatchSize)
+      aQuery = aQuery.limit(aBatchSize);
+    let docs;
+    while (!docs || (docs.length===aBatchSize)) {
+      if (docs)
+        aQuery = aQuery.startAfter(docs[docs.length-1]);
+
+      let results;
+      try {
+        results = await FirebaseExtra.timeout(aQuery.get());
+      } catch(e) {
+        if (e.code==9)      // need index generated, so make sure dev sees this
+          console.error(e);
+        throw e;
+      }
+      docs = results.empty ? [] : results.docs;
+      let datas = docs.map(doc => doc.data());
+      let response = aHandler(datas,docs);
+      if (FirebaseExtra.isPromise(response))
+        response = await response;
+    }
+  }
+
+  // async
+  queryBatchParallel(aQuery,aHandler,aBatchSize=10) {
+    return this.queryBatch(
+      aQuery,
+      (datas,docs)=>{
+        let promises = [];
+        for(let i=0;i<datas.length;i++) {
+          promises[i] = aHandler(datas[i],docs[i]);
+        }
+        return Promise.all(promises);
+      },
+      aBatchSize
+    );
+  }
+
+  forBatchParallel(aCollection,...args) {
+    let aHandler = args.pop();
+    let batchsize = (args.length % 3 > 0) ? args.pop() : 10;
+    let query = this.collectionWhereQuery(aCollection,...args);
+    return this.queryBatchParallel(query,aHandler,batchsize);
+  }
+
 	async forQueryBatch(aQuery,aBatchSize,aHandler) {
     if (aBatchSize)
       aQuery = aQuery.limit(aBatchSize);
@@ -250,7 +296,7 @@ var FirebaseExtra = class {
       }
       docs = results.empty ? [] : results.docs;
       let response = aHandler(docs.map(d=>d.data()));
-      if (this.isPromise(response))
+      if (FirebaseExtra.isPromise(response))
         response = await response;
     }
 	}
@@ -272,7 +318,7 @@ var FirebaseExtra = class {
     return this.forQueryBatch(query,aBatchSize, async (items) => {
       for (let item of items) {
         let response = aHandler(item);
-        if (this.isPromise(response))
+        if (FirebaseExtra.isPromise(response))
           await response;
       }
     });
@@ -451,6 +497,7 @@ FirebaseExtra.TimeoutError = function() {
 FirebaseExtra.TimeoutError.prototype = Object.create(Error.prototype);
 FirebaseExtra.TimeoutError.prototype.name = "TimeoutError";
 
+FirebaseExtra.timeoutms = 30000;
 /**
  * Rejects a promise with a {@link FirebaseTimeout} if it does not settle within
  * the specified timeout.
@@ -460,7 +507,9 @@ FirebaseExtra.TimeoutError.prototype.name = "TimeoutError";
  * @returns {Promise} Either resolves/rejects with `promise`, or rejects with
  *                   `TimeoutError`, whichever settles first.
  */
-FirebaseExtra.timeout = function(promise, timeoutMillis) {
+FirebaseExtra.timeout = function(promise, timeoutMillis=null) {
+  if (!timeoutMillis)
+    timeoutMillis = this.timeoutms;
   var error = new FirebaseExtra.TimeoutError(),
     timeout;
 
