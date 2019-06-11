@@ -93,7 +93,7 @@ const Roles = class Roles {
 	}
 
 	static fullRole(aSpecRole,aRoleTree) {
-		if (aSpecRole.contains('.'))
+		if (aSpecRole.includes('.'))
 			return aSpecRole;
 		for (let tr of aRoleTree) {
 			var trnodes = tr.split('.');
@@ -128,8 +128,8 @@ var FirebaseExtra = class {
       }, appname);
       if (this.firebaseSdk.auth)
         this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
-      if (this.app.firestore)
-        this.app.firestore().settings({timestampsInSnapshots: true});
+      // if (this.app.firestore)
+      //   this.app.firestore().settings({timestampsInSnapshots: true});
     }
   }
 
@@ -221,6 +221,11 @@ var FirebaseExtra = class {
     aUpdates = Object.assign({},aUpdates,{id: aId});
     return FirebaseExtra.timeout(result,this.timeoutms).then(()=> aUpdates);
   }
+
+  async exists(aCollection,aId,aCheckServer=true) {
+		var ref = await this.getRef(aCollection, aId, aCheckServer ? {source: 'server'} : {});
+		return !!ref.exists;
+	}
 
   get serverTimestamp() {
     return this.firebaseSdk.firestore.FieldValue.serverTimestamp();

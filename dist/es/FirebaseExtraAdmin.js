@@ -19,7 +19,7 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 			databaseURL: config.databaseURL
 		};
 		this.adminApp = this.adminSdk.initializeApp(options,appname);
-		this.adminApp.firestore().settings({timestampsInSnapshots: true});
+		//this.adminApp.firestore().settings({timestampsInSnapshots: true});
 	}
 
 	dispose() {

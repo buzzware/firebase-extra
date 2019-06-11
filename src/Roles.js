@@ -91,7 +91,7 @@ const Roles = class Roles {
 	}
 
 	static fullRole(aSpecRole,aRoleTree) {
-		if (aSpecRole.contains('.'))
+		if (aSpecRole.includes('.'))
 			return aSpecRole;
 		for (let tr of aRoleTree) {
 			var trnodes = tr.split('.');
