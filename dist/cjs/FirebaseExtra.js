@@ -120,12 +120,13 @@ var FirebaseExtra = class {
     console.log('before initializeApp');
     // '[DEFAULT]' must exist for some API methods that use the default instance
     if (this.firebaseSdk) {
-      var appname = this.firebaseSdk.apps.find(a => a.name == '[DEFAULT]') ? config.projectId + '-admin' + Math.random().toString().replace('0.', '-') : '[DEFAULT]';
-      this.app = this.firebaseSdk.initializeApp({
+      var appname = this.firebaseSdk.apps.find(a => a.name == '[DEFAULT]') ? config.projectId + '-admin' + Math.random().toString().replace('0.', '-') : null; //'[DEFAULT]';
+      let conf = {
         apiKey: config.apiKey,
         authDomain: config.authDomain,
         projectId: config.projectId
-      }, appname);
+      };
+      this.app = appname ? this.firebaseSdk.initializeApp(conf, appname) : this.firebaseSdk.initializeApp(conf);
       if (this.firebaseSdk.auth)
         this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
       // if (this.app.firestore)

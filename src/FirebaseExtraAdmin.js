@@ -15,12 +15,13 @@ var FirebaseExtraAdmin = class extends FirebaseExtra {
 
 		this.adminSdk = adminSdk;
 		// '[DEFAULT]' must exist for some API methods that use the default instance
-		var appname = this.adminSdk.apps.find(a=>a.name=='[DEFAULT]') ? config.projectId+'-admin'+Math.random().toString().replace('0.','-') : '[DEFAULT]';
+		var appname = this.adminSdk.apps.find(a=>a.name=='[DEFAULT]') ? config.projectId+'-admin'+Math.random().toString().replace('0.','-') : null; //'[DEFAULT]';
 		var options = {
 			credential: this.adminSdk.credential.cert(serviceCredentials),
 			databaseURL: config.databaseURL
 		};
-		this.adminApp = this.adminSdk.initializeApp(options,appname);
+		//console.log('appname: '+(appname || 'null'));
+		this.adminApp = appname ? this.adminSdk.initializeApp(options,appname) : this.adminSdk.initializeApp(options);
 		//this.adminApp.firestore().settings({timestampsInSnapshots: true});
 	}
 
