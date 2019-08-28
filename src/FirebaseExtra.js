@@ -102,12 +102,14 @@ var FirebaseExtra = class {
   // Create a document in the given collection with the given values
   // * if the values contain an id, it will become the document id. Otherwise an id will be generated and the id property set to it.
   // * returns a shallow clone of the values, with the id set
-  create(aCollection,aValues) {
+  async create(aCollection,aValues) {
     let id = aValues.id;
     if (!id)
       id = this.firestore.collection(aCollection).doc().id;
+    if (await this.exists(aCollection,id))
+      throw new Error('Cannot create when document already exists with that id');
     aValues = Object.assign({},aValues,{id});
-    return this.set(aCollection,id,aValues);
+    return await this.set(aCollection,id,aValues);
   }
 
   update(aCollection,aId,aUpdates) {
@@ -182,17 +184,16 @@ var FirebaseExtra = class {
       } else {
         createValues = aValues;
       }
-      await this.create(aCollection, createValues);
+      return await this.create(aCollection, createValues);
     } catch(e) {
       if (!aId)		// id wasn't given, so the failure must be something besides a key clash
         throw e;
-      await this.update(aCollection, aId, aValues);
+      return await this.update(aCollection, aId, aValues);
     }
   }
 
   // !!! could also add upsert(), which tries to update then creates if missing
-  // async
-  modelCrupdate(aCollection, aId, aValues) {
+  async modelCrupdate(aCollection, aId, aValues) {
     if (!aValues || !Object.keys(aValues))
       return Promise.resolve();
     try {
@@ -203,11 +204,11 @@ var FirebaseExtra = class {
       } else {
         createValues = aValues;
       }
-      return this.modelCreate(aCollection, createValues);
+      return await this.modelCreate(aCollection, createValues);
     } catch(e) {
       if (!aValues || !Object.keys(aValues))
         return;
-      return this.modelUpdate(aCollection, aId, aValues);
+      return await this.modelUpdate(aCollection, aId, aValues);
     }
   }
 
@@ -237,6 +238,19 @@ var FirebaseExtra = class {
 		}
 		return query;
 	}
+
+	/*
+	Use like this :
+
+      let result = await firebase.getOr(
+        firebase.getAllWhere('Promotion',null,'phone_number','==',ourNumber,'enabled_from','<=',now),
+        firebase.getAllWhere('Promotion',null,'phone_number','==',ourNumber,'enabled_from','==',null)
+      );
+	 */
+  async getOr(...aDocsPromises) {
+    let allDocs = await Promise.all(aDocsPromises);
+    return allDocs = _(allDocs).flatten().compact().value();
+  }
 
   async queryBatch(aQuery,aHandler,aBatchSize=10) {
     if (aBatchSize)
