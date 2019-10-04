@@ -529,9 +529,9 @@ var FirebaseExtra = class {
     }
   }
 
-  async postFunction(aFunction,aInput) {
+  async _postLikeFunction(aMethod,aFunction,aInput) {
     let body = aInput;//this.encode(aInput);
-    let url = this.config.functionsBaseUrl+aFunction;
+    let url = aFunction[0]=='/' ? aFunction : this.config.functionsBaseUrl+aFunction;
     let token = await this.getSessionToken();
 
     let headers = {
@@ -542,12 +542,22 @@ var FirebaseExtra = class {
     if (token)
       headers.Authorization = 'Bearer '+token;
     let response = await fetch(url, {
-      method: 'post',
+      method: aMethod,
       headers: headers,
       credentials: 'same-origin',
       body: JSON.stringify(body)
     });
     return await this.HandleResponse(response);
+  }
+
+  //async
+  postFunction(aFunction,aInput) {
+    return this._postLikeFunction('post',aFunction,aInput);
+  }
+
+  //async
+  patchFunction(aFunction,aInput) {
+    return this._postLikeFunction('patch',aFunction,aInput);
   }
 
   async getFunction(aFunction,aParams) {
