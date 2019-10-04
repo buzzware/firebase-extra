@@ -538,7 +538,7 @@ var FirebaseExtra = class {
     if (token)
       headers.Authorization = 'Bearer '+token;
     let response = await fetch(url, {
-      method: aMethod,
+      method: aMethod.toUpperCase(),
       headers: headers,
       credentials: 'same-origin',
       body: JSON.stringify(body)
@@ -548,12 +548,12 @@ var FirebaseExtra = class {
 
   //async
   postFunction(aFunction,aInput) {
-    return this._postLikeFunction('post',aFunction,aInput);
+    return this._postLikeFunction('POST',aFunction,aInput);
   }
 
   //async
   patchFunction(aFunction,aInput) {
-    return this._postLikeFunction('patch',aFunction,aInput);
+    return this._postLikeFunction('PATCH',aFunction,aInput);
   }
 
   async getFunction(aFunction,aParams) {
@@ -566,7 +566,7 @@ var FirebaseExtra = class {
     if (token)
       headers.Authorization = 'Bearer '+token;
     let response = await fetch(aFunction,{
-      method: 'get',
+      method: 'GET',
       headers: headers,
       credentials: 'same-origin',
       params: aParams
