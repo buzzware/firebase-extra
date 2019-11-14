@@ -6,7 +6,7 @@ export default [
 
 	{
 		input: 'src/FirebaseExtra.js',
-		external: [],
+		external: ['lodash'],
 		output: [
 			{ file: pkg.main, format: 'cjs' },
 			{ file: pkg.module, format: 'es' }

@@ -1,5 +1,7 @@
 'use strict';
 
+import _ from 'lodash';
+
 import Roles from './Roles';
 
 var isNode = (typeof module !== 'undefined' && module.exports);
@@ -291,6 +293,78 @@ var FirebaseExtra = class {
     );
   }
 
+  // Build a Firestore query using where, orderBy, limit, startAfter etc from a query object or
+  // collection name and parameters object, and return it.
+  buildQuery(aCollectionOrQuery, aParams) {
+    let query;
+    if (_.isString(aCollectionOrQuery))
+      query = this.firestore.collection(aCollectionOrQuery)
+    else
+      query = aCollectionOrQuery;
+    if (aParams) {
+      if (aParams.where) {
+        if (Array.isArray(aParams.where)) {
+          var whereArgs = aParams.where.slice(0);
+          while (whereArgs.length) {
+            var clause = whereArgs.splice(0, 3);
+            let [k, o, v] = clause;
+            if (o == '=')
+              o = '==';
+            if (v === undefined)
+              v = null;
+            query = query.where(k, o, v);
+          }
+        } else if (_.isObject(aParams.where)) {
+          for (let k of Object.keys(aParams.where)) {
+            let v = aParams.where[k];
+            if (v === undefined)
+              v = null;
+            query = query.where(k, '==', v);
+          }
+        }
+      }
+      let orderBy = aParams.orderBy;
+      if (orderBy) {
+        let pairs = [];
+        if (!Array.isArray(orderBy))
+          orderBy = [orderBy];
+        for (let v of orderBy) {
+          if (_.isString(v)) {
+            let parts = v.split(' ');
+            pairs.push(parts);
+          }
+        }
+        for (let p of pairs)
+          query = query.orderBy(...p);
+      }
+      if (aParams.limit)
+        query = query.limit(aParams.limit);
+      if (aParams.startAfter)
+        query = query.startAfter(aParams.startAfter);
+    }
+    return query;
+  }
+
+  // extends query() with startAfterId and potentially other parameters
+  // usage : (await firebase.buildQueryEx({...params...})).
+  async buildQueryEx(aCollectionOrQuery, aParams) {
+    let colObj;
+    if (aParams && aParams.startAfterId) {
+      if (_.isString(aCollectionOrQuery))
+        colObj = this.firestore.collection(aCollectionOrQuery)
+      else
+        colObj = aCollectionOrQuery;
+      var ref = colObj.doc(String(aParams.startAfterId)).get();
+      aParams = _.omit(aParams,'startAfterId');
+      aParams.startAfter = await ref;
+    }
+    return this.buildQuery(colObj || aCollectionOrQuery,aParams);
+  }
+
+  async query(aCollectionOrQuery, aParams) {
+    return FirebaseExtra.timeout(this.buildQueryEx(aCollectionOrQuery,aParams).then(q=>q.get()).then(result => _.map(result.docs, d => d.data())));
+  }
+
   forBatchParallel(aCollection,...args) {
     let aHandler = args.pop();
     let batchsize = (args.length % 3 > 0) ? args.pop() : 10;
@@ -410,7 +484,11 @@ var FirebaseExtra = class {
   }
 
   async HandleResponse(aResponse) {
-    let result = aResponse.headers.get('Content-Type').indexOf('json')>=0 ? await aResponse.json() : await aResponse.text();
+    let result;
+    if (aResponse.headers.get('Content-Type').indexOf('json')>=0)
+      result = await aResponse.json();
+    else
+      result = await aResponse.text();
     if (aResponse.ok) {
       if (typeof(result) == 'string')
         return {message: result};
