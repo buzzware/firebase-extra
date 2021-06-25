@@ -8,26 +8,30 @@ var isNode = (typeof module !== 'undefined' && module.exports);
 
 var FirebaseExtra = class {
 
-  constructor(config, firebaseSdk) {
+  constructor(config, firebaseSdk, app = null) {
     this.config = config;
     this.firebaseSdk = firebaseSdk;
     this.timeoutms = 20000;
     this.auth_persistence = null;
     this.inited = false;
     console.log('before initializeApp');
-    // '[DEFAULT]' must exist for some API methods that use the default instance
-    if (this.firebaseSdk) {
-      var appname = this.firebaseSdk.apps.find(a => a.name == '[DEFAULT]') ? config.projectId + '-admin' + Math.random().toString().replace('0.', '-') : null; //'[DEFAULT]';
-      let conf = {
-        apiKey: config.apiKey,
-        authDomain: config.authDomain,
-        projectId: config.projectId
-      };
-      this.app = appname ? this.firebaseSdk.initializeApp(conf, appname) : this.firebaseSdk.initializeApp(conf);
-      if (this.firebaseSdk.auth)
-        this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
-      // if (this.app.firestore)
-      //   this.app.firestore().settings({timestampsInSnapshots: true});
+    if (app) {  // mainly for testing with @firebase/rules-unit-testing
+      this.app = app;
+      app.auth().useEmulator("http://localhost:9099");
+      this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
+    } else {    // using actual firebase instance
+      if (this.firebaseSdk) {
+        // '[DEFAULT]' must exist for some API methods that use the default instance
+        var appname = this.firebaseSdk.apps.find(a => a.name == '[DEFAULT]') ? config.projectId + '-admin' + Math.random().toString().replace('0.', '-') : null; //'[DEFAULT]';
+        let conf = {
+          apiKey: config.apiKey,
+          authDomain: config.authDomain,
+          projectId: config.projectId
+        };
+        this.app = appname ? this.firebaseSdk.initializeApp(conf, appname) : this.firebaseSdk.initializeApp(conf);
+        if (this.firebaseSdk.auth)
+          this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
+      }
     }
   }
 
@@ -78,29 +82,29 @@ var FirebaseExtra = class {
     var result = this.firestore.collection(aCollection).doc(String(aId)).get(aOptions);
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
-  
+
   async get(aCollection,aId) {
     var ref = await this.getRef(aCollection,aId);
     return ref.exists ? ref.data() : undefined;
   }
-  
+
   async getFresh(aCollection,aId) {
     var ref = await this.getRef(aCollection,aId,{source: 'server'});
     return ref.exists ? ref.data() : undefined;
   }
-  
+
   set(aCollection,aId,aValues) {
     var result = this.firestore.collection(aCollection).doc(String(aId)).set(aValues).then(()=>aValues);
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
-  
+
   clear(aCollection,aId) {
     if (!aId)
       throw new Error('clear all of a resource not supported');
     var result = this.firestore.collection(aCollection).doc(String(aId)).delete();
     return FirebaseExtra.timeout(result,this.timeoutms);
   }
-  
+
   // Create a document in the given collection with the given values
   // * if the values contain an id, it will become the document id. Otherwise an id will be generated and the id property set to it.
   // * returns a shallow clone of the values, with the id set
@@ -485,7 +489,8 @@ var FirebaseExtra = class {
 
   async HandleResponse(aResponse) {
     let result;
-    if (aResponse.headers.get('Content-Type').indexOf('json')>=0)
+    let contentType = aResponse.headers.get('Content-Type');
+    if (contentType && contentType.indexOf('json')>=0)
       result = await aResponse.json();
     else
       result = await aResponse.text();
@@ -533,7 +538,17 @@ var FirebaseExtra = class {
     return this._postLikeFunction('PATCH',aFunction,aInput);
   }
 
+  // !!! This works in a browser, but the problem is the URL constructor requires a base url, and how do we get that within node?
+  // Might have to find a firebase api or implement url encoding
+  // let params = {timezone: this.place.utc_offset || 8};
+  // var url = new URL('/api/place_status/'+this.place.id,document.baseURI);
+  // Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+  // this.status = await this.firebase.getFunction(url.toString());
   async getFunction(aFunction,aParams) {
+    if (aParams)
+      throw new Error('aParams not actually working yet');
+
+
     let headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',

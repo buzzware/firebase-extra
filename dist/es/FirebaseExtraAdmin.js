@@ -5,22 +5,26 @@ var isNode = (typeof module !== 'undefined' && typeof module.exports !== 'undefi
 
 var FirebaseExtraAdmin = class extends FirebaseExtra {
 
-	constructor(config, firebaseSdk, adminSdk, serviceCredentials) {
-		super(config, firebaseSdk);
+	constructor(config, firebaseSdk, adminSdk, serviceCredentials, app = null, adminApp = null) {
+		super(config, firebaseSdk, app);
 
 // If you are using the Node.js Admin SDK in a Cloud Function, you can automatically initialize the SDK through the functions.config() variable:
 // var app = admin.initializeApp(functions.config().firebase);
 
 		this.adminSdk = adminSdk;
-		// '[DEFAULT]' must exist for some API methods that use the default instance
-		var appname = this.adminSdk.apps.find(a=>a.name=='[DEFAULT]') ? config.projectId+'-admin'+Math.random().toString().replace('0.','-') : null; //'[DEFAULT]';
-		var options = {
-			credential: this.adminSdk.credential.cert(serviceCredentials),
-			databaseURL: config.databaseURL
-		};
-		//console.log('appname: '+(appname || 'null'));
-		this.adminApp = appname ? this.adminSdk.initializeApp(options,appname) : this.adminSdk.initializeApp(options);
-		//this.adminApp.firestore().settings({timestampsInSnapshots: true});
+		if (adminApp) {  // mainly for testing with @firebase/rules-unit-testing
+			this.adminApp = adminApp;
+			adminApp.auth().useEmulator("http://localhost:9099");
+			//this.auth_persistence = this.firebaseSdk.auth.Auth.Persistence.LOCAL;
+		} else {    // using actual firebase instance
+			// '[DEFAULT]' must exist for some API methods that use the default instance
+			var appname = this.adminSdk.apps.find(a => a.name == '[DEFAULT]') ? config.projectId + '-admin' + Math.random().toString().replace('0.', '-') : null; //'[DEFAULT]';
+			var options = {
+				credential: this.adminSdk.credential.cert(serviceCredentials),
+				databaseURL: config.databaseURL
+			};
+			this.adminApp = appname ? this.adminSdk.initializeApp(options, appname) : this.adminSdk.initializeApp(options);
+		}
 	}
 
 	dispose() {
